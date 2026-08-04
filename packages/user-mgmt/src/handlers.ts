@@ -5,7 +5,6 @@ import { createSession, deleteSession, loadSession } from './session';
 import { sendEmail } from './email';
 import { assignDefaultRole, getUserRoles } from './rbac';
 
-// Handles loading user data based on the session ID extracted from cookies.
 export async function handleLoadUser(request: Request, env: Env): Promise<Response> {
     const sessionId = getSessionIdFromCookies(request);
     if (sessionId) {
@@ -15,7 +14,7 @@ export async function handleLoadUser(request: Request, env: Env): Promise<Respon
                 try {
                     const user = await getUser(env, sessionData.username);
                     if (user) {
-                        const roles = await getUserRoles(env, user.UserID);
+                        const roles = await getUserRoles(env, user.id);
                         sessionData.roles = roles;
                     }
                 } catch (error) {
@@ -30,7 +29,6 @@ export async function handleLoadUser(request: Request, env: Env): Promise<Respon
     return new Response(JSON.stringify({ error: 'User not logged in' }), { status: 401 });
 }
 
-// 修改：handleRegister 去掉 firstName 和 lastName
 export async function handleRegister(request: Request, env: Env): Promise<Response> {
     try {
         const regData = await request.json() as RegistrationData;
@@ -63,7 +61,6 @@ export async function handleRegister(request: Request, env: Env): Promise<Respon
     }
 }
 
-// 登录逻辑（未修改）
 export async function handleLogin(request: Request, env: Env): Promise<Response> {
     const credentials = await request.json() as Credentials;
     const { username, password } = credentials;
@@ -78,7 +75,8 @@ export async function handleLogin(request: Request, env: Env): Promise<Response>
             return new Response(JSON.stringify({ error: 'Invalid credentials' }), { status: 401 });
         }
 
-        const passwordMatch = await comparePassword(password, user.Password as string);
+        // 注意：数据库字段是 password（小写）
+        const passwordMatch = await comparePassword(password, user.password);
         if (!passwordMatch) {
             return new Response(JSON.stringify({ error: 'Invalid credentials' }), { status: 401 });
         }
@@ -93,7 +91,6 @@ export async function handleLogin(request: Request, env: Env): Promise<Response>
     }
 }
 
-// 登出（未修改）
 export async function handleLogout(request: Request, env: Env): Promise<Response> {
     const sessionId = getSessionIdFromCookies(request);
     if (sessionId) {
@@ -105,7 +102,6 @@ export async function handleLogout(request: Request, env: Env): Promise<Response
     return new Response(JSON.stringify({ message: 'Logout successful' }), { headers });
 }
 
-// 忘记密码（修改 toName 用 username）
 export async function handleForgotPassword(request: Request, env: Env): Promise<Response> {
     try {
         const { username } = await request.json() as { username: string };
@@ -119,7 +115,7 @@ export async function handleForgotPassword(request: Request, env: Env): Promise<
 
         const resetLink = `${getForgotPasswordUrl(env)}?token=${resetToken}`;
         const toEmail = username;
-        const toName = user.Username; // 直接用用户名，避免 FirstName/LastName 不存在
+        const toName = user.username; // 直接用 username
         const subject = 'Password Reset Link';
         const contentValue = `Click the following link to reset your password: ${resetLink}`;
         await sendEmail(toEmail, toName, subject, contentValue, env);
@@ -131,21 +127,19 @@ export async function handleForgotPassword(request: Request, env: Env): Promise<
     }
 }
 
-// 密码重置验证（未修改）
 export async function handleForgotPasswordValidate(request: Request, env: Env): Promise<Response> {
     const { token } = await request.json() as { token: string };
     const user = await getUserByResetToken(env, token);
     if (!user) {
         return new Response(JSON.stringify({ error: 'Invalid token' }), { status: 400 });
     }
-    const tokenExpired = isTokenExpired(env, user.ResetTokenTime as number);
+    const tokenExpired = isTokenExpired(env, user.reset_token_time);
     if (tokenExpired) {
         return new Response(JSON.stringify({ error: 'Token expired' }), { status: 400 });
     }
     return new Response(JSON.stringify({ message: 'Valid Token' }));
 }
 
-// 密码重置新密码（未修改）
 export async function handleForgotPasswordNewPassword(request: Request, env: Env): Promise<Response> {
     try {
         const { token, password } = await request.json() as { token: string, password: string };
@@ -154,7 +148,7 @@ export async function handleForgotPasswordNewPassword(request: Request, env: Env
             return new Response(JSON.stringify({ error: 'Invalid token' }), { status: 400 });
         }
         const hashedPassword = await hashPassword(password);
-        await updatePassword(env, user.Username, hashedPassword);
+        await updatePassword(env, user.username, hashedPassword);
         return new Response(JSON.stringify({ message: 'Password reset successful' }));
     } catch (error) {
         console.error('Error resetting password:', error);
