@@ -21,10 +21,11 @@ export async function checkUserExists(env: Env, username: string): Promise<boole
     return existingUser.success && existingUser.results.length > 0;
 }
 
-export async function storeUser(env: Env, user: { username: string, hashedPassword: string, firstName: string, lastName: string }): Promise<number> {
-    const insertUserQuery = 'INSERT INTO User (Username, Password, FirstName, LastName) VALUES (?, ?, ?, ?)';
+// 修改：只插入 Username 和 Password，去掉了 FirstName 和 LastName
+export async function storeUser(env: Env, user: { username: string, hashedPassword: string }): Promise<number> {
+    const insertUserQuery = 'INSERT INTO User (Username, Password) VALUES (?, ?)';
     const insertUserStmt = await env.usersDB.prepare(insertUserQuery);
-    const result = await insertUserStmt.bind(user.username, user.hashedPassword, user.firstName, user.lastName).run();
+    const result = await insertUserStmt.bind(user.username, user.hashedPassword).run();
     
     if (!result.success || !result.meta.last_row_id) {
         throw new Error('Failed to create user');
@@ -67,8 +68,7 @@ export interface Credentials {
     password: string;
 }
 
+// 修改：去掉了 firstName 和 lastName
 export interface RegistrationData extends Credentials {
-    firstName: string;
-    lastName: string;
+    // 不再包含 firstName 和 lastName
 }
-
