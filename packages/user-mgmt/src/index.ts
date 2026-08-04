@@ -47,7 +47,7 @@ import {
 	handleAssignRole,
 	handleRemoveRole,
 	handleGetAuditLogs,
-	handleUpdateProfile, // 新增导入
+	handleUpdateProfile,
 } from './handlers';
 
 // ========== CORS 配置：允许所有来源（兼容任意前端域名） ==========
@@ -101,9 +101,7 @@ router
 	.post('*/forgot-password-validate', (request, env, ctx) => handleForgotPasswordValidate(request, env))
 	.post('*/forgot-password-new-password', (request, env, ctx) => handleForgotPasswordNewPassword(request, env))
 	.get('*/load-user', (request, env, ctx) => handleLoadUser(request, env))
-	// ===== 新增 update-profile 路由 =====
 	.put('*/update-profile', (request, env, ctx) => handleUpdateProfile(request, env));
-	// ====================================
 
 // Middleware to check if RBAC is enabled
 function requireRbacEnabled(request: IRequest, env: Env): Response | void {
