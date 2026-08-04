@@ -5,28 +5,44 @@ import { createSession, deleteSession, loadSession } from './session';
 import { sendEmail } from './email';
 import { assignDefaultRole, getUserRoles } from './rbac';
 
+/**
+ * 加载当前登录用户信息
+ * 修复：不再返回 sessionData，而是从数据库查询完整用户信息
+ */
 export async function handleLoadUser(request: Request, env: Env): Promise<Response> {
     const sessionId = getSessionIdFromCookies(request);
-    if (sessionId) {
-        const sessionData = await loadSession(env, sessionId);
-        if (sessionData) {
-            if (getRbacEnabled(env)) {
-                try {
-                    const user = await getUser(env, sessionData.username);
-                    if (user) {
-                        const roles = await getUserRoles(env, user.id);
-                        sessionData.roles = roles;
-                    }
-                } catch (error) {
-                    console.error('Error fetching user roles:', error);
-                }
-            }
-            return new Response(JSON.stringify(sessionData), {
-                headers: { 'Content-Type': 'application/json' }
-            });
-        }
+    if (!sessionId) {
+        return new Response(JSON.stringify({ error: 'User not logged in' }), { status: 401 });
     }
-    return new Response(JSON.stringify({ error: 'User not logged in' }), { status: 401 });
+
+    const sessionData = await loadSession(env, sessionId);
+    if (!sessionData || !sessionData.username) {
+        return new Response(JSON.stringify({ error: 'Invalid session' }), { status: 401 });
+    }
+
+    try {
+        const user = await getUser(env, sessionData.username);
+        if (!user) {
+            return new Response(JSON.stringify({ error: 'User not found' }), { status: 404 });
+        }
+
+        // 如果 RBAC 启用，获取用户角色
+        if (getRbacEnabled(env)) {
+            try {
+                const roles = await getUserRoles(env, user.id);
+                user.roles = roles;
+            } catch (error) {
+                console.error('Error fetching user roles:', error);
+            }
+        }
+
+        return new Response(JSON.stringify(user), {
+            headers: { 'Content-Type': 'application/json' }
+        });
+    } catch (error) {
+        console.error('Error loading user:', error);
+        return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500 });
+    }
 }
 
 export async function handleRegister(request: Request, env: Env): Promise<Response> {
@@ -75,7 +91,6 @@ export async function handleLogin(request: Request, env: Env): Promise<Response>
             return new Response(JSON.stringify({ error: 'Invalid credentials' }), { status: 401 });
         }
 
-        // 注意：数据库字段是 password（小写）
         const passwordMatch = await comparePassword(password, user.password);
         if (!passwordMatch) {
             return new Response(JSON.stringify({ error: 'Invalid credentials' }), { status: 401 });
@@ -115,7 +130,7 @@ export async function handleForgotPassword(request: Request, env: Env): Promise<
 
         const resetLink = `${getForgotPasswordUrl(env)}?token=${resetToken}`;
         const toEmail = username;
-        const toName = user.username; // 直接用 username
+        const toName = user.username;
         const subject = 'Password Reset Link';
         const contentValue = `Click the following link to reset your password: ${resetLink}`;
         await sendEmail(toEmail, toName, subject, contentValue, env);
