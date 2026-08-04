@@ -179,48 +179,9 @@ export async function handleForgotPasswordNewPassword(request: Request, env: Env
     }
 }
 
-// ===== 新增：更新用户资料接口 =====
-export async function handleUpdateProfile(request: Request, env: Env): Promise<Response> {
-    let sessionId = getSessionIdFromCookies(request);
-    if (!sessionId) {
-        const url = new URL(request.url);
-        sessionId = url.searchParams.get('sessionId') || '';
-    }
-    if (!sessionId) {
-        return new Response(JSON.stringify({ error: 'Not logged in' }), { status: 401 });
-    }
+// ===== 注意：不再包含 handleUpdateProfile，它已移至 index.ts 内联定义 =====
 
-    const sessionData = await loadSession(env, sessionId);
-    if (!sessionData || !sessionData.username) {
-        return new Response(JSON.stringify({ error: 'Invalid session' }), { status: 401 });
-    }
-
-    try {
-        const { avatar, bio } = await request.json() as { avatar?: string, bio?: string };
-
-        if (avatar === undefined && bio === undefined) {
-            return new Response(JSON.stringify({ error: 'No fields to update' }), { status: 400 });
-        }
-
-        const updates: string[] = [];
-        const values: any[] = [];
-        if (avatar !== undefined) { updates.push('avatar = ?'); values.push(avatar); }
-        if (bio !== undefined) { updates.push('bio = ?'); values.push(bio); }
-
-        values.push(sessionData.username);
-        const query = `UPDATE users SET ${updates.join(', ')} WHERE username = ?`;
-        await env.usersDB.prepare(query).bind(...values).run();
-
-        return new Response(JSON.stringify({ message: 'Profile updated successfully' }), {
-            headers: { 'Content-Type': 'application/json' }
-        });
-    } catch (error) {
-        console.error('Error updating profile:', error);
-        return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500 });
-    }
-}
-
-// ===== 导出所有从 rbac 导入的函数（不包含 handleUpdateProfile，它已单独导出） =====
+// ===== 导出所有从 rbac 导入的函数 =====
 export {
     handleListRoles,
     handleCreateRole,
