@@ -52,7 +52,6 @@ export async function handleLoadUser(request: Request, env: Env): Promise<Respon
         return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500 });
     }
 }
-// ===== 修改结束 =====
 
 export async function handleRegister(request: Request, env: Env): Promise<Response> {
     try {
@@ -220,9 +219,8 @@ export async function handleUpdateProfile(request: Request, env: Env): Promise<R
         return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500 });
     }
 }
-// ===== 新增结束 =====
 
-// Export RBAC handlers + update profile
+// ===== 导出所有函数 =====
 export {
     handleListRoles,
     handleCreateRole,
@@ -231,4 +229,5 @@ export {
     handleAssignRole,
     handleRemoveRole,
     handleGetAuditLogs,
+    handleUpdateProfile
 }
