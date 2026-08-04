@@ -1,73 +1,174 @@
-import { Env } from './env';
+import { Env, getForgotPasswordUrl, getRbacEnabled } from './env';
+import { getSessionIdFromCookies, checkUserExists, getUser, storeResetToken, storeUser, isTokenExpired, getUserByResetToken, updatePassword, RegistrationData, Credentials } from './utils';
+import { hashPassword, comparePassword } from './auth';
+import { createSession, deleteSession, loadSession } from './session';
+import { sendEmail } from './email';
+import { assignDefaultRole, getUserRoles } from './rbac';
 
-export function getSessionIdFromCookies(request: Request): string | null {
-    const cookieHeader = request.headers.get('Cookie');
-    if (cookieHeader) {
-        const cookies = cookieHeader.split(';').map(cookie => cookie.trim());
-        const sessionCookie = cookies.find(cookie => cookie.startsWith('cfw_session='));
-        if (sessionCookie) {
-            return sessionCookie.split('=')[1];
+// Handles loading user data based on the session ID extracted from cookies.
+export async function handleLoadUser(request: Request, env: Env): Promise<Response> {
+    const sessionId = getSessionIdFromCookies(request);
+    if (sessionId) {
+        const sessionData = await loadSession(env, sessionId);
+        if (sessionData) {
+            if (getRbacEnabled(env)) {
+                try {
+                    const user = await getUser(env, sessionData.username);
+                    if (user) {
+                        const roles = await getUserRoles(env, user.UserID);
+                        sessionData.roles = roles;
+                    }
+                } catch (error) {
+                    console.error('Error fetching user roles:', error);
+                }
+            }
+            return new Response(JSON.stringify(sessionData), {
+                headers: { 'Content-Type': 'application/json' }
+            });
         }
     }
-    return null;
+    return new Response(JSON.stringify({ error: 'User not logged in' }), { status: 401 });
 }
 
-// Additional utility functions for database operations
-export async function checkUserExists(env: Env, username: string): Promise<boolean> {
-    const checkUserQuery = 'SELECT Username FROM User WHERE Username = ?';
-    const checkUserStmt = await env.usersDB.prepare(checkUserQuery);
-    const existingUser = await checkUserStmt.bind(username).all();
-    return existingUser.success && existingUser.results.length > 0;
-}
+// 修改：handleRegister 去掉 firstName 和 lastName
+export async function handleRegister(request: Request, env: Env): Promise<Response> {
+    try {
+        const regData = await request.json() as RegistrationData;
+        const { username, password } = regData;
 
-// 修改：只插入 Username 和 Password，去掉了 FirstName 和 LastName
-export async function storeUser(env: Env, user: { username: string, hashedPassword: string }): Promise<number> {
-    const insertUserQuery = 'INSERT INTO User (Username, Password) VALUES (?, ?)';
-    const insertUserStmt = await env.usersDB.prepare(insertUserQuery);
-    const result = await insertUserStmt.bind(user.username, user.hashedPassword).run();
-    
-    if (!result.success || !result.meta.last_row_id) {
-        throw new Error('Failed to create user');
+        if (!username || !password) {
+            return new Response(JSON.stringify({ error: 'Missing required fields' }), { status: 400 });
+        }
+
+        const userExists = await checkUserExists(env, username);
+        if (userExists) {
+            return new Response(JSON.stringify({ error: 'User already exists' }), { status: 409 });
+        }
+
+        const hashedPassword = await hashPassword(password);
+        const userId = await storeUser(env, { username, hashedPassword });
+
+        if (getRbacEnabled(env)) {
+            try {
+                await assignDefaultRole(env, userId);
+            } catch (error) {
+                console.error('Error assigning default role:', error);
+            }
+        }
+
+        return new Response(JSON.stringify({ message: 'User registered successfully' }), { status: 201 });
+    } catch (error) {
+        console.error('Error during registration:', error);
+        return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500 });
     }
-    
-    return Number(result.meta.last_row_id);
 }
 
-export async function getUser(env: Env, username: string): Promise<any> {
-    const query = 'SELECT * FROM User WHERE Username = ?1';
-    const result = (await env.usersDB.prepare(query).bind(username).all()).results;
-    return result.length > 0 ? result[0] : null;
+// 登录逻辑（未修改）
+export async function handleLogin(request: Request, env: Env): Promise<Response> {
+    const credentials = await request.json() as Credentials;
+    const { username, password } = credentials;
+
+    try {
+        if (!username || !password) {
+            return new Response(JSON.stringify({ error: 'Missing username or password' }), { status: 400 });
+        }
+
+        const user = await getUser(env, username);
+        if (!user) {
+            return new Response(JSON.stringify({ error: 'Invalid credentials' }), { status: 401 });
+        }
+
+        const passwordMatch = await comparePassword(password, user.Password as string);
+        if (!passwordMatch) {
+            return new Response(JSON.stringify({ error: 'Invalid credentials' }), { status: 401 });
+        }
+
+        const sessionId = await createSession(env, user);
+        return new Response(JSON.stringify({ message: 'Login successful' }), {
+            headers: { 'Set-Cookie': `cfw_session=${sessionId}; Secure; Path=/; SameSite=None; Max-Age=${60 * 30}` }
+        });
+    } catch (error) {
+        console.error('Error during login:', error);
+        return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500 });
+    }
 }
 
-export async function storeResetToken(env: Env, username: string, resetToken: string): Promise<void> {
-    const updateQuery = 'UPDATE User SET ResetToken = ?, ResetTokenTime = ? WHERE Username = ?';
-    await env.usersDB.prepare(updateQuery).bind(resetToken, Date.now(), username).run();
+// 登出（未修改）
+export async function handleLogout(request: Request, env: Env): Promise<Response> {
+    const sessionId = getSessionIdFromCookies(request);
+    if (sessionId) {
+        await deleteSession(env, sessionId);
+    }
+    const headers = new Headers({
+        'Set-Cookie': 'cfw_session=; HttpOnly; Secure; SameSite=Strict; Max-Age=0',
+    });
+    return new Response(JSON.stringify({ message: 'Logout successful' }), { headers });
 }
 
-export async function getUserByResetToken(env: Env, token: string): Promise<any> {
-    const query = 'SELECT * FROM User WHERE ResetToken = ?';
-    const result = (await env.usersDB.prepare(query).bind(token).all()).results;
-    return result.length > 0 ? result[0] : null;
+// 忘记密码（修改 toName 用 username）
+export async function handleForgotPassword(request: Request, env: Env): Promise<Response> {
+    try {
+        const { username } = await request.json() as { username: string };
+        const user = await getUser(env, username);
+        if (!user) {
+            return new Response(JSON.stringify({ error: 'User not found' }), { status: 404 });
+        }
+
+        const resetToken = crypto.getRandomValues(new Uint8Array(16)).join('');
+        await storeResetToken(env, username, resetToken);
+
+        const resetLink = `${getForgotPasswordUrl(env)}?token=${resetToken}`;
+        const toEmail = username;
+        const toName = user.Username; // 直接用用户名，避免 FirstName/LastName 不存在
+        const subject = 'Password Reset Link';
+        const contentValue = `Click the following link to reset your password: ${resetLink}`;
+        await sendEmail(toEmail, toName, subject, contentValue, env);
+
+        return new Response(JSON.stringify({ message: 'Password reset initiated' }));
+    } catch (error) {
+        console.error('Error during password reset:', error);
+        return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500 });
+    }
 }
 
-export async function updatePassword(env: Env, username: string, hashedPassword: string): Promise<void> {
-    const updateQuery = 'UPDATE User SET Password = ?, ResetToken = NULL, ResetTokenTime = NULL WHERE Username = ?';
-    await env.usersDB.prepare(updateQuery).bind(hashedPassword, username).run();
+// 密码重置验证（未修改）
+export async function handleForgotPasswordValidate(request: Request, env: Env): Promise<Response> {
+    const { token } = await request.json() as { token: string };
+    const user = await getUserByResetToken(env, token);
+    if (!user) {
+        return new Response(JSON.stringify({ error: 'Invalid token' }), { status: 400 });
+    }
+    const tokenExpired = isTokenExpired(env, user.ResetTokenTime as number);
+    if (tokenExpired) {
+        return new Response(JSON.stringify({ error: 'Token expired' }), { status: 400 });
+    }
+    return new Response(JSON.stringify({ message: 'Valid Token' }));
 }
 
-export function isTokenExpired(env: Env, tokenTime: number): boolean {
-    const millisecondsInMinute = 1000 * 60;
-    const tokenExpirationTime = env.TOKEN_VALID_MINUTES * millisecondsInMinute;
-    return Date.now() - tokenTime > tokenExpirationTime;
+// 密码重置新密码（未修改）
+export async function handleForgotPasswordNewPassword(request: Request, env: Env): Promise<Response> {
+    try {
+        const { token, password } = await request.json() as { token: string, password: string };
+        const user = await getUserByResetToken(env, token);
+        if (!user) {
+            return new Response(JSON.stringify({ error: 'Invalid token' }), { status: 400 });
+        }
+        const hashedPassword = await hashPassword(password);
+        await updatePassword(env, user.Username, hashedPassword);
+        return new Response(JSON.stringify({ message: 'Password reset successful' }));
+    } catch (error) {
+        console.error('Error resetting password:', error);
+        return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500 });
+    }
 }
 
-// Type Definitions
-export interface Credentials {
-    username: string;
-    password: string;
-}
-
-// 修改：去掉了 firstName 和 lastName
-export interface RegistrationData extends Credentials {
-    // 不再包含 firstName 和 lastName
-}
+// Export RBAC handlers
+export {
+    handleListRoles,
+    handleCreateRole,
+    handleListPermissions,
+    handleGetUserRoles,
+    handleAssignRole,
+    handleRemoveRole,
+    handleGetAuditLogs
+} from './handlers/rbac';
