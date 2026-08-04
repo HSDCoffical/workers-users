@@ -220,7 +220,7 @@ export async function handleUpdateProfile(request: Request, env: Env): Promise<R
     }
 }
 
-// ===== 导出所有函数 =====
+// ===== 导出所有从 rbac 导入的函数（不包含 handleUpdateProfile，它已单独导出） =====
 export {
     handleListRoles,
     handleCreateRole,
@@ -228,6 +228,5 @@ export {
     handleGetUserRoles,
     handleAssignRole,
     handleRemoveRole,
-    handleGetAuditLogs,
-    handleUpdateProfile
+    handleGetAuditLogs
 }
