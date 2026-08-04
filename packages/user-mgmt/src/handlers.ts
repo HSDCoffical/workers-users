@@ -179,9 +179,7 @@ export async function handleForgotPasswordNewPassword(request: Request, env: Env
     }
 }
 
-// ===== 注意：不再包含 handleUpdateProfile，它已移至 index.ts 内联定义 =====
-
-// ===== 导出所有从 rbac 导入的函数 =====
+// ===== 导出所有函数（确保与 index.ts 中的导入完全匹配） =====
 export {
     handleListRoles,
     handleCreateRole,
