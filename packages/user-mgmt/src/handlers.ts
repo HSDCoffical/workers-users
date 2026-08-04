@@ -222,7 +222,7 @@ export async function handleUpdateProfile(request: Request, env: Env): Promise<R
 }
 // ===== 新增结束 =====
 
-// Export RBAC handlers + update profile
+// Export RBAC handlers (不包含 handleUpdateProfile，因为它已经单独导出)
 export {
     handleListRoles,
     handleCreateRole,
@@ -230,6 +230,5 @@ export {
     handleGetUserRoles,
     handleAssignRole,
     handleRemoveRole,
-    handleGetAuditLogs,
-    handleUpdateProfile
-} from './handlers/rbac';
+    handleGetAuditLogs
+}
