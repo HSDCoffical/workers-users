@@ -47,8 +47,11 @@ import {
 	handleAssignRole,
 	handleRemoveRole,
 	handleGetAuditLogs,
-	handleUpdateProfile,
 } from './handlers';
+
+// 导入必要的工具函数
+import { getSessionIdFromCookies, getUser } from './utils';
+import { loadSession } from './session';
 
 // ========== CORS 配置：允许所有来源（兼容任意前端域名） ==========
 const { preflight, corsify } = cors({
@@ -92,6 +95,48 @@ const router = AutoRouter<IRequest, [Env, ExecutionContext]>({
 	finally: [corsify],   // and corsify downstream
 });
 
+// ===== 直接在路由文件中定义更新资料函数（避免导出冲突） =====
+async function updateProfile(request: Request, env: Env): Promise<Response> {
+    let sessionId = getSessionIdFromCookies(request);
+    if (!sessionId) {
+        const url = new URL(request.url);
+        sessionId = url.searchParams.get('sessionId') || '';
+    }
+    if (!sessionId) {
+        return new Response(JSON.stringify({ error: 'Not logged in' }), { status: 401 });
+    }
+
+    const sessionData = await loadSession(env, sessionId);
+    if (!sessionData || !sessionData.username) {
+        return new Response(JSON.stringify({ error: 'Invalid session' }), { status: 401 });
+    }
+
+    try {
+        const { avatar, bio } = await request.json() as { avatar?: string, bio?: string };
+
+        if (avatar === undefined && bio === undefined) {
+            return new Response(JSON.stringify({ error: 'No fields to update' }), { status: 400 });
+        }
+
+        const updates: string[] = [];
+        const values: any[] = [];
+        if (avatar !== undefined) { updates.push('avatar = ?'); values.push(avatar); }
+        if (bio !== undefined) { updates.push('bio = ?'); values.push(bio); }
+
+        values.push(sessionData.username);
+        const query = `UPDATE users SET ${updates.join(', ')} WHERE username = ?`;
+        await env.usersDB.prepare(query).bind(...values).run();
+
+        return new Response(JSON.stringify({ message: 'Profile updated successfully' }), {
+            headers: { 'Content-Type': 'application/json' }
+        });
+    } catch (error) {
+        console.error('Error updating profile:', error);
+        return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500 });
+    }
+}
+// ==========================================================
+
 // Define routes
 router
 	.post('*/register', (request, env, ctx) => handleRegister(request, env))
@@ -101,7 +146,7 @@ router
 	.post('*/forgot-password-validate', (request, env, ctx) => handleForgotPasswordValidate(request, env))
 	.post('*/forgot-password-new-password', (request, env, ctx) => handleForgotPasswordNewPassword(request, env))
 	.get('*/load-user', (request, env, ctx) => handleLoadUser(request, env))
-	.put('*/update-profile', (request, env, ctx) => handleUpdateProfile(request, env));
+	.put('*/update-profile', (request, env, ctx) => updateProfile(request, env)); // 使用内联函数
 
 // Middleware to check if RBAC is enabled
 function requireRbacEnabled(request: IRequest, env: Env): Response | void {
