@@ -8,16 +8,12 @@ import { assignDefaultRole, getUserRoles } from './rbac';
 // ===== 核心修改：支持从 Cookie 或 URL 参数获取 sessionId =====
 export async function handleLoadUser(request: Request, env: Env): Promise<Response> {
     try {
-        // 1. 从 Cookie 获取 sessionId
         let sessionId = getSessionIdFromCookies(request);
         const url = new URL(request.url);
-
-        // 2. 如果 Cookie 没有，从 URL 参数获取
         if (!sessionId) {
             sessionId = url.searchParams.get('sessionId') || '';
         }
 
-        // 3. 如果有 sessionId，从 session 中取 username
         let username = '';
         if (sessionId) {
             const sessionData = await loadSession(env, sessionId);
@@ -25,8 +21,6 @@ export async function handleLoadUser(request: Request, env: Env): Promise<Respon
                 username = sessionData.username;
             }
         }
-
-        // 4. 如果没有 sessionId，尝试从 URL 参数获取 username（fallback）
         if (!username) {
             username = url.searchParams.get('username') || '';
         }
@@ -40,7 +34,6 @@ export async function handleLoadUser(request: Request, env: Env): Promise<Respon
             return new Response(JSON.stringify({ error: 'User not found' }), { status: 404 });
         }
 
-        // 如果 RBAC 启用，获取用户角色
         if (getRbacEnabled(env)) {
             try {
                 const roles = await getUserRoles(env, user.id);
@@ -50,7 +43,6 @@ export async function handleLoadUser(request: Request, env: Env): Promise<Respon
             }
         }
 
-        // 去掉密码再返回
         const { password, ...safeUser } = user;
         return new Response(JSON.stringify(safeUser), {
             headers: { 'Content-Type': 'application/json' }
@@ -188,7 +180,49 @@ export async function handleForgotPasswordNewPassword(request: Request, env: Env
     }
 }
 
-// Export RBAC handlers
+// ===== 新增：更新用户资料接口 =====
+export async function handleUpdateProfile(request: Request, env: Env): Promise<Response> {
+    let sessionId = getSessionIdFromCookies(request);
+    if (!sessionId) {
+        const url = new URL(request.url);
+        sessionId = url.searchParams.get('sessionId') || '';
+    }
+    if (!sessionId) {
+        return new Response(JSON.stringify({ error: 'Not logged in' }), { status: 401 });
+    }
+
+    const sessionData = await loadSession(env, sessionId);
+    if (!sessionData || !sessionData.username) {
+        return new Response(JSON.stringify({ error: 'Invalid session' }), { status: 401 });
+    }
+
+    try {
+        const { avatar, bio } = await request.json() as { avatar?: string, bio?: string };
+
+        if (avatar === undefined && bio === undefined) {
+            return new Response(JSON.stringify({ error: 'No fields to update' }), { status: 400 });
+        }
+
+        const updates: string[] = [];
+        const values: any[] = [];
+        if (avatar !== undefined) { updates.push('avatar = ?'); values.push(avatar); }
+        if (bio !== undefined) { updates.push('bio = ?'); values.push(bio); }
+
+        values.push(sessionData.username);
+        const query = `UPDATE users SET ${updates.join(', ')} WHERE username = ?`;
+        await env.usersDB.prepare(query).bind(...values).run();
+
+        return new Response(JSON.stringify({ message: 'Profile updated successfully' }), {
+            headers: { 'Content-Type': 'application/json' }
+        });
+    } catch (error) {
+        console.error('Error updating profile:', error);
+        return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500 });
+    }
+}
+// ===== 新增结束 =====
+
+// Export RBAC handlers + update profile
 export {
     handleListRoles,
     handleCreateRole,
@@ -196,5 +230,6 @@ export {
     handleGetUserRoles,
     handleAssignRole,
     handleRemoveRole,
-    handleGetAuditLogs
+    handleGetAuditLogs,
+    handleUpdateProfile
 } from './handlers/rbac';
