@@ -13,12 +13,12 @@ database_name = "hono-bbs-db"
 database_id = "b3597f13-df80-4685-87fe-abd54f5efbc6"
 
 [vars]
-EMAIL_FROM = "noreply@justblackmagic.com"
-EMAIL_FROM_NAME = "Black Magic Consulting"
+EMAIL_FROM = "xuexiang@lianggong.dpdns.org"
+EMAIL_FROM_NAME = "凉宫数据"
 
 EMAIL_DKIM_SELECTOR = "mailchannels"
-EMAIL_DKIM_DOMAIN = "justblackmagic.com"
-FORGOT_PASSWORD_URL = "https://account-pages.tools.justblackmagic.com/forgot-password-reset.html"
+EMAIL_DKIM_DOMAIN = "HSDC.dpdns.org"
+FORGOT_PASSWORD_URL = "https://HSDC.dpdns.org/forgot-password"
 TOKEN_VALID_MINUTES = 60
 
 # RBAC Configuration
