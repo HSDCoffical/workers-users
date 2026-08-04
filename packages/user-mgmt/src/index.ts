@@ -49,14 +49,14 @@ import {
 	handleGetAuditLogs,
 } from './handlers';
 
-// ========== 关键修改：CORS 显式指定允许的域名 ==========
+// ========== CORS 配置：允许所有来源（兼容任意前端域名） ==========
 const { preflight, corsify } = cors({
-	origin: 'https://users-manage-react.pages.dev', // 改为你的 Pages 域名
+	origin: true,
 	credentials: true,
 	allowMethods: ['GET', 'POST', 'PUT', 'DELETE'],
 	maxAge: 84600,
 });
-// ===================================================
+// ==============================================================
 
 // Flag to ensure bootstrap only runs once per worker instance
 let bootstrapCompleted = false;
