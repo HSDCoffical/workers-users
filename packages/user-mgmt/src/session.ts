@@ -4,20 +4,20 @@ import { getUserPermissions } from './rbac';
 import { SessionData } from './types/rbac';
 
 export async function createSession(env: Env, user: any): Promise<string> {
+    // 适配你的 D1 表字段（小写）
     const sessionData: SessionData = {
-        username: user.Username,
-        firstName: user.FirstName,
-        lastName: user.LastName,
+        id: user.id,
+        username: user.username,
+        // 如果有需要可以加更多字段，但必须匹配你表里的字段名
     };
 
     // Include permissions if RBAC is enabled
     if (getRbacEnabled(env)) {
         try {
-            const permissions = await getUserPermissions(env, user.UserID);
+            const permissions = await getUserPermissions(env, user.id);
             sessionData.permissions = permissions;
         } catch (error) {
             console.error('Error fetching user permissions:', error);
-            // Continue without permissions rather than failing the session creation
         }
     }
 
