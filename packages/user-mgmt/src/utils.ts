@@ -1,4 +1,3 @@
-// utils.ts
 import { Env } from './env';
 
 export function getSessionIdFromCookies(request: Request): string | null {
@@ -13,17 +12,15 @@ export function getSessionIdFromCookies(request: Request): string | null {
     return null;
 }
 
-// Additional utility functions for database operations
 export async function checkUserExists(env: Env, username: string): Promise<boolean> {
-    const checkUserQuery = 'SELECT Username FROM User WHERE Username = ?';
+    const checkUserQuery = 'SELECT username FROM users WHERE username = ?';
     const checkUserStmt = await env.usersDB.prepare(checkUserQuery);
     const existingUser = await checkUserStmt.bind(username).all();
     return existingUser.success && existingUser.results.length > 0;
 }
 
-// 修改：只插入 Username 和 Password，去掉了 FirstName 和 LastName
 export async function storeUser(env: Env, user: { username: string, hashedPassword: string }): Promise<number> {
-    const insertUserQuery = 'INSERT INTO User (Username, Password) VALUES (?, ?)';
+    const insertUserQuery = 'INSERT INTO users (username, password) VALUES (?, ?)';
     const insertUserStmt = await env.usersDB.prepare(insertUserQuery);
     const result = await insertUserStmt.bind(user.username, user.hashedPassword).run();
     
@@ -35,24 +32,24 @@ export async function storeUser(env: Env, user: { username: string, hashedPasswo
 }
 
 export async function getUser(env: Env, username: string): Promise<any> {
-    const query = 'SELECT * FROM User WHERE Username = ?1';
+    const query = 'SELECT * FROM users WHERE username = ?1';
     const result = (await env.usersDB.prepare(query).bind(username).all()).results;
     return result.length > 0 ? result[0] : null;
 }
 
 export async function storeResetToken(env: Env, username: string, resetToken: string): Promise<void> {
-    const updateQuery = 'UPDATE User SET ResetToken = ?, ResetTokenTime = ? WHERE Username = ?';
+    const updateQuery = 'UPDATE users SET reset_token = ?, reset_token_time = ? WHERE username = ?';
     await env.usersDB.prepare(updateQuery).bind(resetToken, Date.now(), username).run();
 }
 
 export async function getUserByResetToken(env: Env, token: string): Promise<any> {
-    const query = 'SELECT * FROM User WHERE ResetToken = ?';
+    const query = 'SELECT * FROM users WHERE reset_token = ?';
     const result = (await env.usersDB.prepare(query).bind(token).all()).results;
     return result.length > 0 ? result[0] : null;
 }
 
 export async function updatePassword(env: Env, username: string, hashedPassword: string): Promise<void> {
-    const updateQuery = 'UPDATE User SET Password = ?, ResetToken = NULL, ResetTokenTime = NULL WHERE Username = ?';
+    const updateQuery = 'UPDATE users SET password = ?, reset_token = NULL, reset_token_time = NULL WHERE username = ?';
     await env.usersDB.prepare(updateQuery).bind(hashedPassword, username).run();
 }
 
@@ -62,13 +59,9 @@ export function isTokenExpired(env: Env, tokenTime: number): boolean {
     return Date.now() - tokenTime > tokenExpirationTime;
 }
 
-// Type Definitions
 export interface Credentials {
     username: string;
     password: string;
 }
 
-// 修改：去掉了 firstName 和 lastName
-export interface RegistrationData extends Credentials {
-    // 不再包含 firstName 和 lastName
-}
+export interface RegistrationData extends Credentials {}
