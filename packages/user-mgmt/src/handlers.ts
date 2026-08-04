@@ -231,5 +231,4 @@ export {
     handleAssignRole,
     handleRemoveRole,
     handleGetAuditLogs,
-    handleUpdateProfile
 }
