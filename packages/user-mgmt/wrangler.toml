@@ -9,8 +9,8 @@ service = "session-state"
 
 [[d1_databases]]
 binding = "usersDB"
-database_name = "users"
-database_id = "08d1a683-e910-43c4-bce1-918319e23e7f"
+database_name = "hono-bbs-db"
+database_id = "b3597f13-df80-4685-87fe-abd54f5efbc6"
 
 [vars]
 EMAIL_FROM = "noreply@justblackmagic.com"
