@@ -53,7 +53,6 @@ async function handleLogin(request: Request, env: Env) {
             return new Response(JSON.stringify({ error: 'Invalid credentials' }), { status: 401 });
         }
 
-        // 兼容大小写密码字段
         let storedPassword = user.password || user.Password || user.passwd;
         if (!storedPassword) {
             console.error('User object has no password field:', JSON.stringify(user));
@@ -75,7 +74,7 @@ async function handleLogin(request: Request, env: Env) {
     }
 }
 
-// ===== 3. 获取用户信息（支持 ?username= 参数） =====
+// ===== 3. 获取用户信息 =====
 async function handleLoadUser(request: Request, env: Env) {
     try {
         const url = new URL(request.url);
@@ -96,7 +95,7 @@ async function handleLoadUser(request: Request, env: Env) {
     }
 }
 
-// ===== 4. 更新个人资料（支持 ?username= 参数） =====
+// ===== 4. 更新个人资料 =====
 async function handleUpdateProfile(request: Request, env: Env) {
     try {
         const url = new URL(request.url);
@@ -132,7 +131,7 @@ async function handleLogout(request: Request, env: Env) {
     });
 }
 
-// ===== 6. 返回个人中心 HTML 页面（带玻璃效果 + 编辑功能） =====
+// ===== 6. 个人中心 HTML（深色毛玻璃） =====
 async function handleAccount(request: Request, env: Env) {
     const url = new URL(request.url);
     const username = url.searchParams.get('username') || 'test123';
@@ -142,16 +141,13 @@ async function handleAccount(request: Request, env: Env) {
         return new Response('用户不存在', { status: 404 });
     }
 
-    // 处理编辑请求（POST 表单提交）
     if (request.method === 'POST' && url.searchParams.get('action') === 'edit') {
         try {
             const formData = await request.formData();
             const bio = formData.get('bio') || '';
             const avatar = formData.get('avatar') || '';
-            // 更新数据库
             await env.usersDB.prepare('UPDATE users SET bio = ?, avatar = ? WHERE username = ?')
                 .bind(bio, avatar, username).run();
-            // 重定向回个人中心（刷新）
             return new Response(null, {
                 status: 302,
                 headers: { 'Location': `/account?username=${username}` }
@@ -161,7 +157,6 @@ async function handleAccount(request: Request, env: Env) {
         }
     }
 
-    // 你的背景图 URL（GitHub raw 链接）
     const bgImage = 'https://raw.githubusercontent.com/HSDCofficial/users-manage-react/main/public/bg.jpg';
 
     const html = `
@@ -179,19 +174,19 @@ async function handleAccount(request: Request, env: Env) {
             display: flex;
             align-items: center;
             justify-content: center;
-            background: url('${bgImage}') center/cover fixed;
+            background: url('${bgImage}') center/cover fixed, #1a1a2e;
             padding: 20px;
         }
         .glass {
-            background: rgba(255,255,255,0.25);
+            background: rgba(20,20,35,0.85);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255,255,255,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
             border-radius: 32px;
             padding: 32px 24px;
             max-width: 420px;
             width: 100%;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.6);
             color: #fff;
             text-align: center;
         }
@@ -200,56 +195,52 @@ async function handleAccount(request: Request, env: Env) {
             height: 100px;
             border-radius: 50%;
             object-fit: cover;
-            border: 3px solid rgba(255,255,255,0.6);
+            border: 3px solid rgba(255,255,255,0.2);
             margin: 0 auto 16px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
         }
-        h1 { font-size: 26px; font-weight: 600; margin-bottom: 6px; text-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-        .bio { font-size: 15px; opacity: 0.9; margin-bottom: 16px; }
-        .badge { display: inline-block; background: rgba(59,130,246,0.7); padding: 4px 14px; border-radius: 20px; font-size: 13px; margin-bottom: 16px; }
-        .field { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.15); }
-        .field-label { opacity: 0.7; }
-        .field-value { font-weight: 500; }
+        h1 { font-size: 26px; font-weight: 600; margin-bottom: 6px; }
+        .bio { font-size: 15px; opacity: 0.85; margin-bottom: 16px; }
+        .badge { display: inline-block; background: rgba(59,130,246,0.6); padding: 4px 14px; border-radius: 20px; font-size: 13px; margin-bottom: 16px; }
+        .field { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.08); }
+        .field-label { opacity: 0.6; font-size: 14px; }
+        .field-value { font-weight: 500; font-size: 14px; }
         .btn {
             display: inline-block;
             margin-top: 20px;
-            background: rgba(255,255,255,0.2);
-            border: 1px solid rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.15);
             padding: 10px 24px;
             border-radius: 40px;
             color: #fff;
             font-weight: 500;
             cursor: pointer;
-            backdrop-filter: blur(4px);
             transition: background 0.2s;
             text-decoration: none;
             font-size: 14px;
         }
-        .btn:hover { background: rgba(255,255,255,0.35); }
-        .btn-primary { background: rgba(59,130,246,0.6); border-color: rgba(59,130,246,0.4); }
-        .btn-primary:hover { background: rgba(59,130,246,0.8); }
+        .btn:hover { background: rgba(255,255,255,0.2); }
+        .btn-primary { background: rgba(59,130,246,0.5); border-color: rgba(59,130,246,0.3); }
+        .btn-primary:hover { background: rgba(59,130,246,0.7); }
         .edit-form { margin-top: 20px; text-align: left; }
-        .edit-form label { display: block; font-size: 14px; opacity: 0.8; margin-bottom: 4px; }
+        .edit-form label { display: block; font-size: 14px; opacity: 0.7; margin-bottom: 4px; }
         .edit-form input, .edit-form textarea {
             width: 100%;
             padding: 10px 14px;
             border-radius: 12px;
-            border: 1px solid rgba(255,255,255,0.3);
-            background: rgba(255,255,255,0.15);
-            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255,255,255,0.15);
+            background: rgba(255,255,255,0.08);
             color: #fff;
             font-size: 14px;
             margin-bottom: 12px;
-            transition: border 0.2s;
         }
         .edit-form input:focus, .edit-form textarea:focus {
             outline: none;
-            border-color: rgba(255,255,255,0.6);
+            border-color: rgba(255,255,255,0.3);
         }
         .edit-form textarea { resize: vertical; min-height: 60px; }
         .edit-form .btn-group { display: flex; gap: 10px; }
         .edit-form .btn-group .btn { flex: 1; text-align: center; margin-top: 0; }
-        .back-link { display: block; margin-top: 16px; color: rgba(255,255,255,0.7); font-size: 14px; }
+        .back-link { display: block; margin-top: 16px; color: rgba(255,255,255,0.5); font-size: 13px; }
     </style>
 </head>
 <body>
@@ -264,10 +255,8 @@ async function handleAccount(request: Request, env: Env) {
             <div class="field"><span class="field-label">角色</span><span class="field-value">${user.role || '用户'}</span></div>
         </div>
 
-        <!-- 编辑按钮 -->
         <button id="editBtn" class="btn btn-primary">✏️ 编辑资料</button>
 
-        <!-- 编辑表单（默认隐藏） -->
         <div id="editForm" class="edit-form" style="display:none;">
             <form method="POST" action="?username=${username}&action=edit">
                 <label>头像 URL</label>
@@ -285,18 +274,13 @@ async function handleAccount(request: Request, env: Env) {
     </div>
 
     <script>
-        const editBtn = document.getElementById('editBtn');
-        const editForm = document.getElementById('editForm');
-        const cancelBtn = document.getElementById('cancelBtn');
-
-        editBtn.addEventListener('click', () => {
-            editForm.style.display = 'block';
-            editBtn.style.display = 'none';
+        document.getElementById('editBtn').addEventListener('click', function() {
+            document.getElementById('editForm').style.display = 'block';
+            this.style.display = 'none';
         });
-
-        cancelBtn.addEventListener('click', () => {
-            editForm.style.display = 'none';
-            editBtn.style.display = 'inline-block';
+        document.getElementById('cancelBtn').addEventListener('click', function() {
+            document.getElementById('editForm').style.display = 'none';
+            document.getElementById('editBtn').style.display = 'inline-block';
         });
     </script>
 </body>
