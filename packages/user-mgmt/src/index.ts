@@ -132,7 +132,7 @@ async function handleLogout(request: Request, env: Env) {
     });
 }
 
-// ===== 6. 返回个人中心 HTML 页面 =====
+// ===== 6. 返回个人中心 HTML 页面（带玻璃效果 + 编辑功能） =====
 async function handleAccount(request: Request, env: Env) {
     const url = new URL(request.url);
     const username = url.searchParams.get('username') || 'test123';
@@ -142,6 +142,28 @@ async function handleAccount(request: Request, env: Env) {
         return new Response('用户不存在', { status: 404 });
     }
 
+    // 处理编辑请求（POST 表单提交）
+    if (request.method === 'POST' && url.searchParams.get('action') === 'edit') {
+        try {
+            const formData = await request.formData();
+            const bio = formData.get('bio') || '';
+            const avatar = formData.get('avatar') || '';
+            // 更新数据库
+            await env.usersDB.prepare('UPDATE users SET bio = ?, avatar = ? WHERE username = ?')
+                .bind(bio, avatar, username).run();
+            // 重定向回个人中心（刷新）
+            return new Response(null, {
+                status: 302,
+                headers: { 'Location': `/account?username=${username}` }
+            });
+        } catch (e) {
+            return new Response('更新失败', { status: 500 });
+        }
+    }
+
+    // 你的背景图 URL（GitHub raw 链接）
+    const bgImage = 'https://raw.githubusercontent.com/HSDCofficial/users-manage-react/main/public/bg.jpg';
+
     const html = `
 <!DOCTYPE html>
 <html>
@@ -150,23 +172,27 @@ async function handleAccount(request: Request, env: Env) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>个人中心 · 凉宫数据</title>
     <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: system-ui, -apple-system, sans-serif;
-            background: #f0f4ff;
-            display: flex;
-            justify-content: center;
-            align-items: center;
             min-height: 100vh;
-            margin: 0;
-            padding: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: url('${bgImage}') center/cover fixed;
+            padding: 20px;
         }
-        .card {
-            background: white;
-            max-width: 400px;
-            width: 100%;
-            border-radius: 24px;
+        .glass {
+            background: rgba(255,255,255,0.25);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 32px;
             padding: 32px 24px;
-            box-shadow: 0 12px 40px rgba(0,0,0,0.08);
+            max-width: 420px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+            color: #fff;
             text-align: center;
         }
         .avatar {
@@ -174,31 +200,105 @@ async function handleAccount(request: Request, env: Env) {
             height: 100px;
             border-radius: 50%;
             object-fit: cover;
-            border: 3px solid #3b82f6;
+            border: 3px solid rgba(255,255,255,0.6);
             margin: 0 auto 16px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
         }
-        h1 { font-size: 24px; margin: 8px 0; }
-        .bio { color: #555; font-size: 14px; margin: 8px 0 16px; }
-        .badge { display: inline-block; background: #3b82f6; color: white; font-size: 12px; padding: 4px 12px; border-radius: 20px; }
-        .field { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
-        .field-label { color: #888; }
+        h1 { font-size: 26px; font-weight: 600; margin-bottom: 6px; text-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .bio { font-size: 15px; opacity: 0.9; margin-bottom: 16px; }
+        .badge { display: inline-block; background: rgba(59,130,246,0.7); padding: 4px 14px; border-radius: 20px; font-size: 13px; margin-bottom: 16px; }
+        .field { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.15); }
+        .field-label { opacity: 0.7; }
         .field-value { font-weight: 500; }
-        .back { margin-top: 20px; color: #3b82f6; text-decoration: none; }
+        .btn {
+            display: inline-block;
+            margin-top: 20px;
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.3);
+            padding: 10px 24px;
+            border-radius: 40px;
+            color: #fff;
+            font-weight: 500;
+            cursor: pointer;
+            backdrop-filter: blur(4px);
+            transition: background 0.2s;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .btn:hover { background: rgba(255,255,255,0.35); }
+        .btn-primary { background: rgba(59,130,246,0.6); border-color: rgba(59,130,246,0.4); }
+        .btn-primary:hover { background: rgba(59,130,246,0.8); }
+        .edit-form { margin-top: 20px; text-align: left; }
+        .edit-form label { display: block; font-size: 14px; opacity: 0.8; margin-bottom: 4px; }
+        .edit-form input, .edit-form textarea {
+            width: 100%;
+            padding: 10px 14px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(4px);
+            color: #fff;
+            font-size: 14px;
+            margin-bottom: 12px;
+            transition: border 0.2s;
+        }
+        .edit-form input:focus, .edit-form textarea:focus {
+            outline: none;
+            border-color: rgba(255,255,255,0.6);
+        }
+        .edit-form textarea { resize: vertical; min-height: 60px; }
+        .edit-form .btn-group { display: flex; gap: 10px; }
+        .edit-form .btn-group .btn { flex: 1; text-align: center; margin-top: 0; }
+        .back-link { display: block; margin-top: 16px; color: rgba(255,255,255,0.7); font-size: 14px; }
     </style>
 </head>
 <body>
-    <div class="card">
+    <div class="glass">
         <img src="${user.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.username) + '&background=3b82f6&color=fff&size=128'}" alt="avatar" class="avatar" />
         <h1>${user.username}</h1>
         <div class="bio">${user.bio || '这个人很懒，什么都没写~'}</div>
-        ${user.badge ? `<span class="badge">🏅 ${user.badge}</span>` : ''}
-        <div style="margin-top:20px;text-align:left;">
+        ${user.badge ? `<div class="badge">🏅 ${user.badge}</div>` : ''}
+        <div style="text-align:left;margin-top:16px;">
             <div class="field"><span class="field-label">用户名</span><span class="field-value">${user.username}</span></div>
             <div class="field"><span class="field-label">简介</span><span class="field-value">${user.bio || '未设置'}</span></div>
             <div class="field"><span class="field-label">角色</span><span class="field-value">${user.role || '用户'}</span></div>
         </div>
-        <a href="?username=${user.username}" class="back">刷新</a>
+
+        <!-- 编辑按钮 -->
+        <button id="editBtn" class="btn btn-primary">✏️ 编辑资料</button>
+
+        <!-- 编辑表单（默认隐藏） -->
+        <div id="editForm" class="edit-form" style="display:none;">
+            <form method="POST" action="?username=${username}&action=edit">
+                <label>头像 URL</label>
+                <input type="text" name="avatar" value="${user.avatar || ''}" placeholder="https://example.com/avatar.png" />
+                <label>个人简介</label>
+                <textarea name="bio" placeholder="写点什么吧...">${user.bio || ''}</textarea>
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-primary">💾 保存</button>
+                    <button type="button" id="cancelBtn" class="btn">取消</button>
+                </div>
+            </form>
+        </div>
+
+        <a href="?username=${user.username}" class="back-link">🔄 刷新</a>
     </div>
+
+    <script>
+        const editBtn = document.getElementById('editBtn');
+        const editForm = document.getElementById('editForm');
+        const cancelBtn = document.getElementById('cancelBtn');
+
+        editBtn.addEventListener('click', () => {
+            editForm.style.display = 'block';
+            editBtn.style.display = 'none';
+        });
+
+        cancelBtn.addEventListener('click', () => {
+            editForm.style.display = 'none';
+            editBtn.style.display = 'inline-block';
+        });
+    </script>
 </body>
 </html>
     `;
