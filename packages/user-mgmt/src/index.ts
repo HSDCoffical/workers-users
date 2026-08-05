@@ -131,7 +131,7 @@ async function handleLogout(request: Request, env: Env) {
     });
 }
 
-// ===== 6. 个人中心 HTML（浅色玻璃，完全复刻图二） =====
+// ===== 6. 个人中心 HTML =====
 async function handleAccount(request: Request, env: Env) {
     const url = new URL(request.url);
     const username = url.searchParams.get('username') || 'test123';
@@ -157,6 +157,7 @@ async function handleAccount(request: Request, env: Env) {
         }
     }
 
+    // 使用你的背景图链接
     const bgImage = 'https://raw.githubusercontent.com/HSDCofficial/users-manage-react/main/public/bg.jpg';
 
     const html = `
