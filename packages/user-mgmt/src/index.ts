@@ -152,7 +152,7 @@ async function handleGetMessages(request: Request, env: Env) {
     });
 }
 
-// ===== 个人中心 =====
+// ===== 个人中心（带左上角返回按钮） =====
 async function handleAccount(request: Request, env: Env) {
     const url = new URL(request.url);
     const username = url.searchParams.get('username') || 'test123';
@@ -247,6 +247,7 @@ async function handleAccount(request: Request, env: Env) {
             box-shadow: 0 20px 60px rgba(0,0,0,0.15);
             color: #1a1a2e;
             text-align: center;
+            position: relative;
         }
         .avatar {
             width: 80px;
@@ -309,10 +310,31 @@ async function handleAccount(request: Request, env: Env) {
         .message.success { background: #d4edda; color: #155724; display: block; }
         .message.error { background: #f8d7da; color: #721c24; display: block; }
         .loading { opacity: 0.6; pointer-events: none; }
+        /* 返回首页按钮样式 */
+        .btn-back {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            color: rgba(255,255,255,0.7);
+            text-decoration: none;
+            font-size: 14px;
+            background: rgba(0,0,0,0.15);
+            padding: 6px 14px;
+            border-radius: 20px;
+            backdrop-filter: blur(4px);
+            transition: background 0.2s;
+        }
+        .btn-back:hover {
+            background: rgba(0,0,0,0.25);
+            color: #fff;
+        }
     </style>
 </head>
 <body>
     <div class="glass">
+        <!-- ===== 左上角返回首页按钮 ===== -->
+        <a href="https://hsdc.dpdns.org" class="btn-back">← 返回</a>
+
         <img src="${user.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.username) + '&background=3b82f6&color=fff&size=128'}" alt="avatar" class="avatar" />
         <h1>${user.username}</h1>
         <div class="bio">${user.bio || '这个人很懒，什么都没写~'}</div>
