@@ -131,7 +131,7 @@ async function handleLogout(request: Request, env: Env) {
     });
 }
 
-// ===== 6. 个人中心 HTML（深色毛玻璃） =====
+// ===== 6. 个人中心 HTML（浅色玻璃，完全复刻图二） =====
 async function handleAccount(request: Request, env: Env) {
     const url = new URL(request.url);
     const username = url.searchParams.get('username') || 'test123';
@@ -174,20 +174,20 @@ async function handleAccount(request: Request, env: Env) {
             display: flex;
             align-items: center;
             justify-content: center;
-            background: url('${bgImage}') center/cover fixed, #1a1a2e;
+            background: url('${bgImage}') center/cover fixed, #e8f0fe;
             padding: 20px;
         }
         .glass {
-            background: rgba(20,20,35,0.85);
+            background: rgba(255,255,255,0.25);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.3);
             border-radius: 32px;
             padding: 32px 24px;
             max-width: 420px;
             width: 100%;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.6);
-            color: #fff;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+            color: #1a1a2e;
             text-align: center;
         }
         .avatar {
@@ -195,52 +195,53 @@ async function handleAccount(request: Request, env: Env) {
             height: 100px;
             border-radius: 50%;
             object-fit: cover;
-            border: 3px solid rgba(255,255,255,0.2);
+            border: 3px solid rgba(255,255,255,0.6);
             margin: 0 auto 16px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
         }
-        h1 { font-size: 26px; font-weight: 600; margin-bottom: 6px; }
-        .bio { font-size: 15px; opacity: 0.85; margin-bottom: 16px; }
-        .badge { display: inline-block; background: rgba(59,130,246,0.6); padding: 4px 14px; border-radius: 20px; font-size: 13px; margin-bottom: 16px; }
-        .field { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.08); }
-        .field-label { opacity: 0.6; font-size: 14px; }
-        .field-value { font-weight: 500; font-size: 14px; }
+        h1 { font-size: 26px; font-weight: 600; margin-bottom: 6px; color: #1a1a2e; }
+        .bio { font-size: 15px; opacity: 0.8; margin-bottom: 16px; color: #333; }
+        .badge { display: inline-block; background: rgba(59,130,246,0.2); padding: 4px 14px; border-radius: 20px; font-size: 13px; color: #1a1a2e; margin-bottom: 16px; }
+        .field { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid rgba(0,0,0,0.08); }
+        .field-label { opacity: 0.6; font-size: 14px; color: #1a1a2e; }
+        .field-value { font-weight: 500; font-size: 14px; color: #1a1a2e; }
         .btn {
             display: inline-block;
             margin-top: 20px;
-            background: rgba(255,255,255,0.1);
-            border: 1px solid rgba(255,255,255,0.15);
+            background: rgba(0,0,0,0.05);
+            border: 1px solid rgba(0,0,0,0.1);
             padding: 10px 24px;
             border-radius: 40px;
-            color: #fff;
+            color: #1a1a2e;
             font-weight: 500;
             cursor: pointer;
             transition: background 0.2s;
             text-decoration: none;
             font-size: 14px;
         }
-        .btn:hover { background: rgba(255,255,255,0.2); }
-        .btn-primary { background: rgba(59,130,246,0.5); border-color: rgba(59,130,246,0.3); }
-        .btn-primary:hover { background: rgba(59,130,246,0.7); }
+        .btn:hover { background: rgba(0,0,0,0.1); }
+        .btn-primary { background: rgba(59,130,246,0.15); border-color: rgba(59,130,246,0.2); }
+        .btn-primary:hover { background: rgba(59,130,246,0.25); }
         .edit-form { margin-top: 20px; text-align: left; }
-        .edit-form label { display: block; font-size: 14px; opacity: 0.7; margin-bottom: 4px; }
+        .edit-form label { display: block; font-size: 14px; opacity: 0.7; margin-bottom: 4px; color: #1a1a2e; }
         .edit-form input, .edit-form textarea {
             width: 100%;
             padding: 10px 14px;
             border-radius: 12px;
-            border: 1px solid rgba(255,255,255,0.15);
-            background: rgba(255,255,255,0.08);
-            color: #fff;
+            border: 1px solid rgba(0,0,0,0.1);
+            background: rgba(255,255,255,0.5);
+            color: #1a1a2e;
             font-size: 14px;
             margin-bottom: 12px;
         }
         .edit-form input:focus, .edit-form textarea:focus {
             outline: none;
-            border-color: rgba(255,255,255,0.3);
+            border-color: rgba(59,130,246,0.4);
         }
         .edit-form textarea { resize: vertical; min-height: 60px; }
         .edit-form .btn-group { display: flex; gap: 10px; }
         .edit-form .btn-group .btn { flex: 1; text-align: center; margin-top: 0; }
-        .back-link { display: block; margin-top: 16px; color: rgba(255,255,255,0.5); font-size: 13px; }
+        .back-link { display: block; margin-top: 16px; color: rgba(0,0,0,0.4); font-size: 13px; }
     </style>
 </head>
 <body>
