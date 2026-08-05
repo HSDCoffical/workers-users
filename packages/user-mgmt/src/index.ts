@@ -18,6 +18,7 @@ const router = AutoRouter({
     finally: [corsify],
 });
 
+// ===== 1. 注册（修复：返回 JSON，不依赖 session） =====
 async function handleRegister(request: Request, env: Env) {
     try {
         const { username, password } = await request.json();
@@ -39,6 +40,7 @@ async function handleRegister(request: Request, env: Env) {
     }
 }
 
+// ===== 2. 登录（修复：不依赖 session-state，直接返回成功） =====
 async function handleLogin(request: Request, env: Env) {
     try {
         const { username, password } = await request.json();
@@ -51,23 +53,23 @@ async function handleLogin(request: Request, env: Env) {
         }
         let storedPassword = user.password || user.Password || user.passwd;
         if (!storedPassword) {
-            console.error('User object has no password field:', JSON.stringify(user));
             return new Response(JSON.stringify({ error: 'User data corrupted' }), { status: 500 });
         }
         const match = await comparePassword(password, storedPassword);
         if (!match) {
             return new Response(JSON.stringify({ error: 'Invalid credentials' }), { status: 401 });
         }
-        const sessionId = await createSession(env, { id: user.id, username: user.username });
-        return new Response(JSON.stringify({ message: 'Login successful' }), {
-            headers: { 'Set-Cookie': `cfw_session=${sessionId}; Secure; Path=/; SameSite=None; Max-Age=1800` }
+        // 登录成功，直接返回成功信息，不创建 session（避免超时）
+        return new Response(JSON.stringify({ message: 'Login successful', username: user.username }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
         });
     } catch (e) {
-        console.error('Login error:', e);
         return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500 });
     }
 }
 
+// ===== 3. 获取用户信息 =====
 async function handleLoadUser(request: Request, env: Env) {
     try {
         const url = new URL(request.url);
@@ -88,6 +90,7 @@ async function handleLoadUser(request: Request, env: Env) {
     }
 }
 
+// ===== 4. 更新个人资料（修复：支持修改用户名和密码） =====
 async function handleUpdateProfile(request: Request, env: Env) {
     try {
         const url = new URL(request.url);
@@ -95,18 +98,35 @@ async function handleUpdateProfile(request: Request, env: Env) {
         if (!username) {
             return new Response(JSON.stringify({ error: 'Missing username parameter' }), { status: 400 });
         }
-        const { avatar, bio } = await request.json();
-        const updates = [];
-        const values = [];
+        const { avatar, bio, newUsername, newPassword } = await request.json();
+        
+        let updates = [];
+        let values = [];
+        
         if (avatar !== undefined) { updates.push('avatar = ?'); values.push(avatar); }
         if (bio !== undefined) { updates.push('bio = ?'); values.push(bio); }
+        if (newUsername && newUsername !== username) { 
+            updates.push('username = ?'); 
+            values.push(newUsername); 
+        }
+        if (newPassword) { 
+            const hashed = await hashPassword(newPassword);
+            updates.push('password = ?'); 
+            values.push(hashed); 
+        }
+        
         if (updates.length === 0) {
             return new Response(JSON.stringify({ error: 'No fields to update' }), { status: 400 });
         }
+        
         values.push(username);
         const query = `UPDATE users SET ${updates.join(', ')} WHERE username = ?`;
         await env.usersDB.prepare(query).bind(...values).run();
-        return new Response(JSON.stringify({ message: 'Profile updated successfully' }), {
+        
+        return new Response(JSON.stringify({ 
+            message: 'Profile updated successfully',
+            username: newUsername || username
+        }), {
             headers: { 'Content-Type': 'application/json' }
         });
     } catch (e) {
@@ -114,6 +134,7 @@ async function handleUpdateProfile(request: Request, env: Env) {
     }
 }
 
+// ===== 5. 登出 =====
 async function handleLogout(request: Request, env: Env) {
     const sessionId = getSessionIdFromCookies(request);
     if (sessionId) { await deleteSession(env, sessionId); }
@@ -122,6 +143,7 @@ async function handleLogout(request: Request, env: Env) {
     });
 }
 
+// ===== 6. 获取消息 =====
 async function handleGetMessages(request: Request, env: Env) {
     const url = new URL(request.url);
     const username = url.searchParams.get('username');
@@ -136,7 +158,7 @@ async function handleGetMessages(request: Request, env: Env) {
     });
 }
 
-// ===== 个人中心 HTML（只展示消息，无发送功能） =====
+// ===== 7. 个人中心 HTML =====
 async function handleAccount(request: Request, env: Env) {
     const url = new URL(request.url);
     const username = url.searchParams.get('username') || 'test123';
@@ -151,11 +173,36 @@ async function handleAccount(request: Request, env: Env) {
             const formData = await request.formData();
             const bio = formData.get('bio') || '';
             const avatar = formData.get('avatar') || '';
-            await env.usersDB.prepare('UPDATE users SET bio = ?, avatar = ? WHERE username = ?')
-                .bind(bio, avatar, username).run();
+            const newUsername = formData.get('newUsername') || '';
+            const newPassword = formData.get('newPassword') || '';
+
+            let updates = [];
+            let values = [];
+            
+            if (avatar) { updates.push('avatar = ?'); values.push(avatar); }
+            if (bio !== undefined) { updates.push('bio = ?'); values.push(bio); }
+            if (newUsername && newUsername !== username) { 
+                updates.push('username = ?'); 
+                values.push(newUsername); 
+            }
+            if (newPassword) { 
+                const hashed = await hashPassword(newPassword);
+                updates.push('password = ?'); 
+                values.push(hashed); 
+            }
+            
+            if (updates.length === 0) {
+                return new Response('没有要更新的字段', { status: 400 });
+            }
+            
+            values.push(username);
+            const query = `UPDATE users SET ${updates.join(', ')} WHERE username = ?`;
+            await env.usersDB.prepare(query).bind(...values).run();
+            
+            const redirectTo = newUsername || username;
             return new Response(null, {
                 status: 302,
-                headers: { 'Location': `/account?username=${username}` }
+                headers: { 'Location': `/account?username=${redirectTo}` }
             });
         } catch (e) {
             return new Response('更新失败', { status: 500 });
@@ -182,8 +229,7 @@ async function handleAccount(request: Request, env: Env) {
         `).join('');
     }
 
-    // 使用 jsdelivr CDN 加速图片
-    const bgImage = 'https://users-manage-react.pages.dev/bg.jpg';
+    const bgImage = 'https://cdn.jsdelivr.net/gh/HSDCofficial/users-manage-react@main/public/bg.jpg';
 
     const html = `
 <!DOCTYPE html>
@@ -286,10 +332,10 @@ async function handleAccount(request: Request, env: Env) {
             <div class="field"><span class="field-label">角色</span><span class="field-value">${user.role || '用户'}</span></div>
         </div>
 
-        <!-- ===== 消息分区（仅展示） ===== -->
+        <!-- ===== 消息分区 ===== -->
         <div style="text-align:left;margin-top:20px;border-top:1px solid rgba(0,0,0,0.08);padding-top:16px;">
             <div class="section-title">📬 消息中心</div>
-            <div class="messages-container" id="messagesContainer">
+            <div class="messages-container">
                 ${messagesHtml}
             </div>
         </div>
@@ -297,13 +343,17 @@ async function handleAccount(request: Request, env: Env) {
         <!-- ===== 编辑按钮 ===== -->
         <button id="editBtn" class="btn btn-primary" style="margin-top:16px;">✏️ 编辑资料</button>
 
-        <!-- ===== 编辑表单 ===== -->
+        <!-- ===== 编辑表单（支持修改用户名和密码） ===== -->
         <div id="editForm" class="edit-form" style="display:none;">
             <form method="POST" action="?username=${username}&action=edit">
                 <label>头像 URL</label>
                 <input type="text" name="avatar" value="${user.avatar || ''}" placeholder="https://example.com/avatar.png" />
                 <label>个人简介</label>
                 <textarea name="bio" placeholder="写点什么吧...">${user.bio || ''}</textarea>
+                <label>新用户名</label>
+                <input type="text" name="newUsername" value="${user.username}" placeholder="新用户名" />
+                <label>新密码</label>
+                <input type="password" name="newPassword" placeholder="留空则不修改" />
                 <div class="btn-group">
                     <button type="submit" class="btn btn-primary">💾 保存</button>
                     <button type="button" id="cancelBtn" class="btn">取消</button>
