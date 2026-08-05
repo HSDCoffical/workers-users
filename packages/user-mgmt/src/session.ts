@@ -3,13 +3,11 @@ import { getUserPermissions } from './rbac';
 import { SessionData } from './types/rbac';
 
 export async function createSession(env: Env, user: any): Promise<string> {
-    // 适配你的 D1 表字段（小写）
     const sessionData: SessionData = {
         id: user.id,
         username: user.username,
     };
 
-    // 如果 RBAC 启用，获取用户权限
     if (getRbacEnabled(env)) {
         try {
             const permissions = await getUserPermissions(env, user.id);
