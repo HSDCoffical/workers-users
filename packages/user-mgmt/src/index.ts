@@ -18,7 +18,6 @@ const router = AutoRouter({
     finally: [corsify],
 });
 
-// ===== 1. 注册 =====
 async function handleRegister(request: Request, env: Env) {
     try {
         const { username, password } = await request.json();
@@ -40,7 +39,6 @@ async function handleRegister(request: Request, env: Env) {
     }
 }
 
-// ===== 2. 登录 =====
 async function handleLogin(request: Request, env: Env) {
     try {
         const { username, password } = await request.json();
@@ -67,7 +65,6 @@ async function handleLogin(request: Request, env: Env) {
     }
 }
 
-// ===== 3. 获取用户信息 =====
 async function handleLoadUser(request: Request, env: Env) {
     try {
         const url = new URL(request.url);
@@ -88,7 +85,6 @@ async function handleLoadUser(request: Request, env: Env) {
     }
 }
 
-// ===== 4. 更新个人资料 =====
 async function handleUpdateProfile(request: Request, env: Env) {
     try {
         const url = new URL(request.url);
@@ -126,7 +122,6 @@ async function handleUpdateProfile(request: Request, env: Env) {
     }
 }
 
-// ===== 5. 登出 =====
 async function handleLogout(request: Request, env: Env) {
     const sessionId = getSessionIdFromCookies(request);
     if (sessionId) { await deleteSession(env, sessionId); }
@@ -135,7 +130,6 @@ async function handleLogout(request: Request, env: Env) {
     });
 }
 
-// ===== 6. 获取消息 =====
 async function handleGetMessages(request: Request, env: Env) {
     const url = new URL(request.url);
     const username = url.searchParams.get('username');
@@ -150,7 +144,7 @@ async function handleGetMessages(request: Request, env: Env) {
     });
 }
 
-// ===== 7. 个人中心 HTML =====
+// ===== 个人中心 =====
 async function handleAccount(request: Request, env: Env) {
     const url = new URL(request.url);
     const username = url.searchParams.get('username') || 'test123';
@@ -321,6 +315,7 @@ async function handleAccount(request: Request, env: Env) {
             <div class="field"><span class="field-label">角色</span><span class="field-value">${user.role || '用户'}</span></div>
         </div>
 
+        <!-- ===== 消息中心 ===== -->
         <div style="text-align:left;margin-top:20px;border-top:1px solid rgba(0,0,0,0.08);padding-top:16px;">
             <div class="section-title">📬 消息中心</div>
             <div class="messages-container">
@@ -332,6 +327,7 @@ async function handleAccount(request: Request, env: Env) {
 
         <button id="editBtn" class="btn btn-primary">✏️ 编辑资料</button>
 
+        <!-- ===== 编辑表单 ===== -->
         <div id="editForm" class="edit-form">
             <label>头像 URL</label>
             <input type="text" id="avatarInput" value="${user.avatar || ''}" placeholder="https://example.com/avatar.png" />
