@@ -41,7 +41,7 @@ async function handleRegister(request: Request, env: Env) {
     }
 }
 
-// ===== 2. 登录 =====
+// ===== 2. 登录（修复：兼容大小写密码字段 + 调试） =====
 async function handleLogin(request: Request, env: Env) {
     try {
         const { username, password } = await request.json();
@@ -52,15 +52,27 @@ async function handleLogin(request: Request, env: Env) {
         if (!user) {
             return new Response(JSON.stringify({ error: 'Invalid credentials' }), { status: 401 });
         }
-        const match = await comparePassword(password, user.password);
+
+        // 尝试获取密码字段（兼容大小写）
+        let storedPassword = user.password || user.Password || user.passwd;
+        if (!storedPassword) {
+            // 如果找不到任何密码字段，打印 user 对象（会出现在 Worker 日志中）
+            console.error('User object has no password field:', JSON.stringify(user));
+            return new Response(JSON.stringify({ error: 'User data corrupted' }), { status: 500 });
+        }
+
+        // 比对密码
+        const match = await comparePassword(password, storedPassword);
         if (!match) {
             return new Response(JSON.stringify({ error: 'Invalid credentials' }), { status: 401 });
         }
+
         const sessionId = await createSession(env, { id: user.id, username: user.username });
         return new Response(JSON.stringify({ message: 'Login successful' }), {
             headers: { 'Set-Cookie': `cfw_session=${sessionId}; Secure; Path=/; SameSite=None; Max-Age=1800` }
         });
     } catch (e) {
+        console.error('Login error:', e);
         return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500 });
     }
 }
