@@ -41,7 +41,7 @@ async function handleRegister(request: Request, env: Env) {
     }
 }
 
-// ===== 2. 登录（修复：兼容大小写密码字段 + 调试） =====
+// ===== 2. 登录 =====
 async function handleLogin(request: Request, env: Env) {
     try {
         const { username, password } = await request.json();
@@ -53,15 +53,13 @@ async function handleLogin(request: Request, env: Env) {
             return new Response(JSON.stringify({ error: 'Invalid credentials' }), { status: 401 });
         }
 
-        // 尝试获取密码字段（兼容大小写）
+        // 兼容大小写密码字段
         let storedPassword = user.password || user.Password || user.passwd;
         if (!storedPassword) {
-            // 如果找不到任何密码字段，打印 user 对象（会出现在 Worker 日志中）
             console.error('User object has no password field:', JSON.stringify(user));
             return new Response(JSON.stringify({ error: 'User data corrupted' }), { status: 500 });
         }
 
-        // 比对密码
         const match = await comparePassword(password, storedPassword);
         if (!match) {
             return new Response(JSON.stringify({ error: 'Invalid credentials' }), { status: 401 });
@@ -134,6 +132,82 @@ async function handleLogout(request: Request, env: Env) {
     });
 }
 
+// ===== 6. 返回个人中心 HTML 页面 =====
+async function handleAccount(request: Request, env: Env) {
+    const url = new URL(request.url);
+    const username = url.searchParams.get('username') || 'test123';
+
+    const user = await getUser(env, username);
+    if (!user) {
+        return new Response('用户不存在', { status: 404 });
+    }
+
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人中心 · 凉宫数据</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: #f0f4ff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 16px;
+        }
+        .card {
+            background: white;
+            max-width: 400px;
+            width: 100%;
+            border-radius: 24px;
+            padding: 32px 24px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.08);
+            text-align: center;
+        }
+        .avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid #3b82f6;
+            margin: 0 auto 16px;
+        }
+        h1 { font-size: 24px; margin: 8px 0; }
+        .bio { color: #555; font-size: 14px; margin: 8px 0 16px; }
+        .badge { display: inline-block; background: #3b82f6; color: white; font-size: 12px; padding: 4px 12px; border-radius: 20px; }
+        .field { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
+        .field-label { color: #888; }
+        .field-value { font-weight: 500; }
+        .back { margin-top: 20px; color: #3b82f6; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <img src="${user.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.username) + '&background=3b82f6&color=fff&size=128'}" alt="avatar" class="avatar" />
+        <h1>${user.username}</h1>
+        <div class="bio">${user.bio || '这个人很懒，什么都没写~'}</div>
+        ${user.badge ? `<span class="badge">🏅 ${user.badge}</span>` : ''}
+        <div style="margin-top:20px;text-align:left;">
+            <div class="field"><span class="field-label">用户名</span><span class="field-value">${user.username}</span></div>
+            <div class="field"><span class="field-label">简介</span><span class="field-value">${user.bio || '未设置'}</span></div>
+            <div class="field"><span class="field-label">角色</span><span class="field-value">${user.role || '用户'}</span></div>
+        </div>
+        <a href="?username=${user.username}" class="back">刷新</a>
+    </div>
+</body>
+</html>
+    `;
+
+    return new Response(html, {
+        headers: { 'Content-Type': 'text/html; charset=utf-8' }
+    });
+}
+
 // ===== 定义路由 =====
 router
     .post('*/register', (req, env) => handleRegister(req, env))
@@ -141,6 +215,7 @@ router
     .post('*/logout', (req, env) => handleLogout(req, env))
     .get('*/load-user', (req, env) => handleLoadUser(req, env))
     .put('*/update-profile', (req, env) => handleUpdateProfile(req, env))
+    .get('*/account', (req, env) => handleAccount(req, env))
     .all('*', () => new Response('Not Found', { status: 404 }));
 
 export default { ...router };
