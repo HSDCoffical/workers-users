@@ -321,9 +321,8 @@ async function handleAccount(request: Request, env: Env) {
         <!-- ===== 消息分区 ===== -->
         <div style="text-align:left;margin-top:20px;border-top:1px solid rgba(0,0,0,0.08);padding-top:16px;">
             <div style="display:flex;justify-content:space-between;align-items:center;">
-                <span class="section-title">📬 消息中心</span>
-                <button id="sendMsgBtn" class="btn btn-primary" style="font-size:12px;padding:4px 14px;">+ 发送消息</button>
-            </div>
+    <span class="section-title">📬 消息中心</span>
+</div>
             <div class="messages-container" id="messagesContainer">
                 ${messagesHtml}
             </div>
