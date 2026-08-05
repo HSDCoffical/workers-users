@@ -1,4 +1,3 @@
-// session.ts
 import { Env, getRbacEnabled } from './env';
 import { getUserPermissions } from './rbac';
 import { SessionData } from './types/rbac';
@@ -8,10 +7,9 @@ export async function createSession(env: Env, user: any): Promise<string> {
     const sessionData: SessionData = {
         id: user.id,
         username: user.username,
-        // 如果有需要可以加更多字段，但必须匹配你表里的字段名
     };
 
-    // Include permissions if RBAC is enabled
+    // 如果 RBAC 启用，获取用户权限
     if (getRbacEnabled(env)) {
         try {
             const permissions = await getUserPermissions(env, user.id);
