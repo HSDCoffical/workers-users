@@ -15,7 +15,7 @@ const router = AutoRouter({
     finally: [corsify],
 });
 
-// ===== 更新个人资料（独立 API） =====
+// ===== 更新个人资料 =====
 async function handleUpdateProfile(request: Request, env: Env) {
     try {
         const url = new URL(request.url);
@@ -53,7 +53,7 @@ async function handleUpdateProfile(request: Request, env: Env) {
     }
 }
 
-// ===== 个人中心 HTML（GET 请求） =====
+// ===== 个人中心 =====
 async function handleAccount(request: Request, env: Env) {
     const url = new URL(request.url);
     const username = url.searchParams.get('username') || 'test123';
@@ -249,10 +249,10 @@ async function handleAccount(request: Request, env: Env) {
     });
 }
 
-// ===== 路由 =====
+// ===== 路由（使用精确路径匹配） =====
 router
-    .put('*/update-profile', (req, env) => handleUpdateProfile(req, env))
-    .get('*/account', (req, env) => handleAccount(req, env))
+    .put('/update-profile', (req, env) => handleUpdateProfile(req, env))
+    .get('/account', (req, env) => handleAccount(req, env))
     .all('*', () => new Response('Not Found', { status: 404 }));
 
 export default { ...router };
