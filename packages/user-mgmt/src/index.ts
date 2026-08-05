@@ -158,7 +158,7 @@ async function handleAccount(request: Request, env: Env) {
     }
 
     // 使用你的背景图链接
-    const bgImage = 'https://raw.githubusercontent.com/HSDCofficial/users-manage-react/main/public/bg.jpg';
+    const bgImage = 'https://picsum.photos/1920/1080?random=1';
 
     const html = `
 <!DOCTYPE html>
