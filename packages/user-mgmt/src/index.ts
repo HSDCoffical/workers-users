@@ -150,7 +150,7 @@ async function handleGetMessages(request: Request, env: Env) {
     });
 }
 
-// ===== 7. 个人中心 HTML（漂亮 UI） =====
+// ===== 7. 个人中心 HTML（背景图使用你的 GitHub 图片） =====
 async function handleAccount(request: Request, env: Env) {
     const url = new URL(request.url);
     const username = url.searchParams.get('username') || 'test123';
@@ -213,7 +213,8 @@ async function handleAccount(request: Request, env: Env) {
         `).join('');
     }
 
-    const bgImage = 'https://cdn.jsdelivr.net/gh/HSDCofficial/users-manage-react@main/public/bg.jpg';
+    // 使用你的 GitHub 图片，加时间戳强制刷新
+    const bgImage = 'https://raw.githubusercontent.com/HSDCofficial/users-manage-react/main/public/bg.jpg?' + Date.now();
 
     const html = `
 <!DOCTYPE html>
@@ -261,170 +262,4 @@ async function handleAccount(request: Request, env: Env) {
         .field { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid rgba(0,0,0,0.08); }
         .field-label { opacity: 0.6; font-size: 13px; color: #1a1a2e; }
         .field-value { font-weight: 500; font-size: 13px; color: #1a1a2e; }
-        .section-title { font-size: 16px; font-weight: 600; margin: 20px 0 12px; text-align: left; color: #1a1a2e; }
-        .btn {
-            display: inline-block;
-            margin-top: 16px;
-            background: rgba(0,0,0,0.05);
-            border: 1px solid rgba(0,0,0,0.1);
-            padding: 8px 20px;
-            border-radius: 40px;
-            color: #1a1a2e;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background 0.2s;
-            text-decoration: none;
-            font-size: 13px;
-            border: none;
-        }
-        .btn:hover { background: rgba(0,0,0,0.1); }
-        .btn-primary { background: rgba(59,130,246,0.15); border-color: rgba(59,130,246,0.2); }
-        .btn-primary:hover { background: rgba(59,130,246,0.25); }
-        .edit-form { margin-top: 16px; text-align: left; display: none; }
-        .edit-form label { display: block; font-size: 13px; opacity: 0.7; margin-bottom: 4px; color: #1a1a2e; }
-        .edit-form input, .edit-form textarea {
-            width: 100%;
-            padding: 8px 12px;
-            border-radius: 12px;
-            border: 1px solid rgba(0,0,0,0.1);
-            background: rgba(255,255,255,0.5);
-            color: #1a1a2e;
-            font-size: 13px;
-            margin-bottom: 10px;
-        }
-        .edit-form input:focus, .edit-form textarea:focus {
-            outline: none;
-            border-color: rgba(59,130,246,0.4);
-        }
-        .edit-form textarea { resize: vertical; min-height: 50px; }
-        .edit-form .btn-group { display: flex; gap: 10px; }
-        .edit-form .btn-group .btn { flex: 1; text-align: center; margin-top: 0; }
-        .back-link { display: block; margin-top: 12px; color: rgba(0,0,0,0.4); font-size: 12px; }
-        .messages-container { max-height: 300px; overflow-y: auto; margin-top: 8px; }
-        .messages-container::-webkit-scrollbar { width: 4px; }
-        .messages-container::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 4px; }
-        .message { margin-top: 12px; padding: 10px; border-radius: 8px; display: none; }
-        .message.success { background: #d4edda; color: #155724; display: block; }
-        .message.error { background: #f8d7da; color: #721c24; display: block; }
-        .loading { opacity: 0.6; pointer-events: none; }
-    </style>
-</head>
-<body>
-    <div class="glass">
-        <img src="${user.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.username) + '&background=3b82f6&color=fff&size=128'}" alt="avatar" class="avatar" />
-        <h1>${user.username}</h1>
-        <div class="bio">${user.bio || '这个人很懒，什么都没写~'}</div>
-        ${user.badge ? `<div class="badge">🏅 ${user.badge}</div>` : ''}
-        <div style="text-align:left;margin-top:12px;">
-            <div class="field"><span class="field-label">用户名</span><span class="field-value">${user.username}</span></div>
-            <div class="field"><span class="field-label">简介</span><span class="field-value">${user.bio || '未设置'}</span></div>
-            <div class="field"><span class="field-label">角色</span><span class="field-value">${user.role || '用户'}</span></div>
-        </div>
-
-        <!-- ===== 消息分区 ===== -->
-        <div style="text-align:left;margin-top:20px;border-top:1px solid rgba(0,0,0,0.08);padding-top:16px;">
-            <div class="section-title">📬 消息中心</div>
-            <div class="messages-container">
-                ${messagesHtml}
-            </div>
-        </div>
-
-        <div id="message" class="message"></div>
-
-        <button id="editBtn" class="btn btn-primary">✏️ 编辑资料</button>
-
-        <div id="editForm" class="edit-form">
-            <label>头像 URL</label>
-            <input type="text" id="avatarInput" value="${user.avatar || ''}" placeholder="https://example.com/avatar.png" />
-            <label>个人简介</label>
-            <textarea id="bioInput" placeholder="写点什么吧...">${user.bio || ''}</textarea>
-            <label>新用户名</label>
-            <input type="text" id="usernameInput" value="${user.username}" placeholder="新用户名" />
-            <label>新密码</label>
-            <input type="password" id="passwordInput" placeholder="留空则不修改" />
-            <div class="btn-group">
-                <button id="saveBtn" class="btn btn-primary">💾 保存</button>
-                <button id="cancelBtn" class="btn">取消</button>
-            </div>
-        </div>
-
-        <a href="?username=${user.username}" class="back-link">🔄 刷新</a>
-    </div>
-
-    <script>
-        const editBtn = document.getElementById('editBtn');
-        const editForm = document.getElementById('editForm');
-        const cancelBtn = document.getElementById('cancelBtn');
-        const saveBtn = document.getElementById('saveBtn');
-        const messageDiv = document.getElementById('message');
-
-        editBtn.addEventListener('click', () => {
-            editForm.style.display = 'block';
-            editBtn.style.display = 'none';
-        });
-
-        cancelBtn.addEventListener('click', () => {
-            editForm.style.display = 'none';
-            editBtn.style.display = 'inline-block';
-            messageDiv.className = 'message';
-            messageDiv.textContent = '';
-        });
-
-        saveBtn.addEventListener('click', async () => {
-            const username = '${username}';
-            const avatar = document.getElementById('avatarInput').value.trim();
-            const bio = document.getElementById('bioInput').value.trim();
-            const newUsername = document.getElementById('usernameInput').value.trim();
-            const newPassword = document.getElementById('passwordInput').value.trim();
-
-            saveBtn.classList.add('loading');
-            saveBtn.textContent = '保存中...';
-
-            try {
-                const resp = await fetch('/update-profile?username=' + username, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ avatar, bio, newUsername, newPassword })
-                });
-                const data = await resp.json();
-
-                if (data.success) {
-                    messageDiv.className = 'message success';
-                    messageDiv.textContent = '✅ 保存成功！';
-                    setTimeout(() => {
-                        window.location.href = '/account?username=' + (data.username || username);
-                    }, 1000);
-                } else {
-                    messageDiv.className = 'message error';
-                    messageDiv.textContent = '❌ 保存失败：' + (data.error || '未知错误');
-                }
-            } catch (e) {
-                messageDiv.className = 'message error';
-                messageDiv.textContent = '❌ 网络错误，请重试';
-            } finally {
-                saveBtn.classList.remove('loading');
-                saveBtn.textContent = '💾 保存';
-            }
-        });
-    </script>
-</body>
-</html>
-    `;
-
-    return new Response(html, {
-        headers: { 'Content-Type': 'text/html; charset=utf-8' }
-    });
-}
-
-// ===== 路由 =====
-router
-    .post('*/register', (req, env) => handleRegister(req, env))
-    .post('*/login', (req, env) => handleLogin(req, env))
-    .post('*/logout', (req, env) => handleLogout(req, env))
-    .get('*/load-user', (req, env) => handleLoadUser(req, env))
-    .put('*/update-profile', (req, env) => handleUpdateProfile(req, env))
-    .get('*/get-messages', (req, env) => handleGetMessages(req, env))
-    .get('*/account', (req, env) => handleAccount(req, env))
-    .all('*', () => new Response('Not Found', { status: 404 }));
-
-export default { ...router };
+        .section-title { font-size: 16px; font-weight: 600; margin:
