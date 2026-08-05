@@ -3,6 +3,7 @@ import { getUserPermissions } from './rbac';
 import { SessionData } from './types/rbac';
 
 export async function createSession(env: Env, user: any): Promise<string> {
+    // 使用小写字段名（匹配你的 D1 表）
     const sessionData: SessionData = {
         id: user.id,
         username: user.username,
