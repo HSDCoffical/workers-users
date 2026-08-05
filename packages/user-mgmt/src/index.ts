@@ -183,7 +183,7 @@ async function handleAccount(request: Request, env: Env) {
     }
 
     // 使用 jsdelivr CDN 加速图片
-    const bgImage = 'https://picsum.photos/1920/1080?random=1';
+    const bgImage = 'https://users-manage-react.pages.dev/bg.jpg';
 
     const html = `
 <!DOCTYPE html>
