@@ -183,7 +183,7 @@ async function handleAccount(request: Request, env: Env) {
     }
 
     // 使用 jsdelivr CDN 加速图片
-    const bgImage = 'https://cdn.jsdelivr.net/gh/HSDCofficial/users-manage-react@main/public/bg.jpg';
+    const bgImage = 'https://users-manage-react.pages.dev/bg.jpg';
 
     const html = `
 <!DOCTYPE html>
