@@ -39,6 +39,7 @@ async function handleRegister(request: Request, env: Env) {
     }
 }
 
+// ===== 登录（返回 Set-Cookie，保持登录状态） =====
 async function handleLogin(request: Request, env: Env) {
     try {
         const { username, password } = await request.json();
@@ -57,10 +58,17 @@ async function handleLogin(request: Request, env: Env) {
         if (!match) {
             return new Response(JSON.stringify({ error: 'Invalid credentials' }), { status: 401 });
         }
+
+        const sessionId = await createSession(env, { id: user.id, username: user.username });
+        
         return new Response(JSON.stringify({ message: 'Login successful', username: user.username }), {
-            headers: { 'Content-Type': 'application/json' }
+            headers: {
+                'Content-Type': 'application/json',
+                'Set-Cookie': `cfw_session=${sessionId}; Secure; Path=/; SameSite=None; Max-Age=604800`
+            }
         });
     } catch (e) {
+        console.error('Login error:', e);
         return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500 });
     }
 }
